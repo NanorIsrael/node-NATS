@@ -6,9 +6,9 @@ async function consume() {
 
 		const connectedmq = await amqp.connect("amqp://localhost");
 		const channel = await connectedmq.createChannel();
-		// const result = await channel.assertQueue("jobs")
-		channel.consume("jobs", (msg) => {
-			var secs = msg.content.toString().split('.').length - 1;
+		await channel.assertQueue("file-queue")
+		channel.consume("file-queue", (msg) => {
+			const filePath = msg.content.toString();
 
 			console.log("messages recieved", msg.content.toString())
 
