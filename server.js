@@ -1,7 +1,10 @@
 // index.js
 const express = require('express');
-const ampq = require('amqplib')
+const amqp = require('amqplib')
+const {writeFile} = require('fs/promises')
 const fileUpload = require('express-fileupload');
+const {join} = require('path')
+
 
 const app = express();
 app.use(express.json())
@@ -10,10 +13,10 @@ app.use(fileUpload({ createParentPath: true }));
 
 
 async function sendToFileQueue(filePath) {
-	const connection = await amqplib.connect('amqp://localhost');
-	const channel = connection.createChannel();
-	channel.assertQueue('file-queue');
-	channel.sendToQueue('file-queue', Buffer.from(filePath));
+	const connection = await amqp.connect('amqp://localhost');
+	const channel = await connection.createChannel();
+	await channel.assertQueue('file-queue');
+	await channel.sendToQueue('file-queue', Buffer.from(filePath));
 
 	setTimeout(() => {
 		console.log("file sent to queue.")
@@ -22,11 +25,28 @@ async function sendToFileQueue(filePath) {
 }
 app.post('/upload', async (req, res) => {
 	if (!req.files || Object.keys(req.files).length === 0) {
-        return res.status(400).send('No files were uploaded.');
+        return res.status(400).json({error: "No files were uploaded."});
     }
-	const file =  req.files
-	console.log(file)
-  	res.json({message: file.name});
+	const uploadedFile =  req.files.file;
+	const fileDir = "./files/"
+	const outputPath = join(fileDir, `${uploadedFile.name}`);
+
+	try {
+		// await writeFile("/files", file);
+		uploadedFile.mv(outputPath, (err) => {
+			if (err) {
+				console.log(err)
+				return res.status(500).send('File upload failed');
+			}
+		});
+		console.log(outputPath)
+		await sendToFileQueue(outputPath);
+		res.json({message: 'File uploaded!'});
+
+	} catch(error) {
+		console.log(error)
+		res.status(500).json({error: "An error occured. File upload failed"})
+	}
 });
 
 const port = 8000;

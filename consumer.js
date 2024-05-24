@@ -14,7 +14,7 @@ async function consume() {
 
 			setTimeout(function() {
 				console.log(" [x] Done");
-			  }, secs * 1000);
+			  }, 5 * 1000);
 		}, {
 			noAck: true
 		})
